@@ -3,6 +3,10 @@ Investigating the performance impact of mods on Minecraft-like environments
 
 This paper inspired by and closely follows the paper "Yardstick: A benchmark for minecraft-like services" by Jesse Donkervliet
 
+As of 14 June 2024, this investigation requires 
+ - openjdk 19.0.1 2022-10-18
+ - nvm v22.3.0
+
 Mineflayer to create the bots that simulates player behavior
  - npm init 
  - npm install mineflayer
