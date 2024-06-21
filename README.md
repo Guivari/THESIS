@@ -8,7 +8,7 @@ As of 14 June 2024, this investigation requires
  - nvm v22.3.0
 
 Mineflayer to create the bots that simulates player behavior
- - npm init 
+ - npm init -y
  - npm install mineflayer
  - npm install mineflayer-pathfinder
  - npm i https://github.com/PrismarineJS/node-minecraft-protocol-forge/tree/master
