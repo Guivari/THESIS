@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  pre_tasks:
+    - name: Check cache directory
+      file:
+        path: cache
+        state: directory
+    - name: Check if cache contains maven
+      stat:
+        path: "{{ playbook_dir }}/cache/apache-maven-3.9.5/bin/mvn"
+      register: stat_maven
+    - name: Download maven
+      shell: |
+          wget https://dlcdn.apache.org/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz
+          tar xvfz apache-maven-3.9.5-bin.tar.gz
+          mv apache-maven-3.9.5 {{ playbook_dir }}/cache/
+          # echo PATH="/home/$(whoami)/apache-maven-3.9.5/bin:\$PATH" >> ~/.bashrc
+          rm apache-maven-3.9.5-bin.tar.gz
+      when: not stat_maven.stat.exists
+
+    - name: Checkout Pecosa
+      git:
+        repo: https://github.com/jdonkervliet/pecosa.git
+        dest: cache/pecosa

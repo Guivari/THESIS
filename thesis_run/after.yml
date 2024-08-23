@@ -1,0 +1,44 @@
+- hosts: localhost
+  tasks:
+    - name: Plot results
+      shell: |
+        python plot-network.py
+
+#   tasks:
+
+#     - name: debug
+#       debug:
+#         msg: "playbook_dir"
+
+#     - import_tasks: "setup_nodes.yml"
+
+# - hosts: server
+#   tasks:
+    
+#     - name: Run server
+#       shell: |
+#         cd THESIS/thesis_run/forge_server
+#         module load java
+#         ./run.sh
+#       async: "30"
+#       poll: 0
+
+#     - name: Sleep 1
+#       pause: 
+#         seconds: 1
+
+#     - name: Get server PID
+#       shell: |
+#         pgrep -u "$(whoami)" -f "minecraftforge"
+#       register: output
+#     - set_fact:
+#         server_pid: "{{ output.stdout }}"
+#     - name: Print Server PID
+#       debug:
+#         var: server_pid
+
+
+# - hosts: localhost
+#   tasks:
+#     - import_tasks: "cleanup_nodes.yml"
+

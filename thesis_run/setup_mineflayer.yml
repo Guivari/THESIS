@@ -1,0 +1,6 @@
+---
+- name: Copy Mineflayer experiment
+  copy:
+    src: "{{ playbook_dir }}/configs/player_sim"
+    dest: "{{ playbook_dir }}/cache/mineflayer"
+    remote_src: True

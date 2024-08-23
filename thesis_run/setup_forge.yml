@@ -1,0 +1,31 @@
+---
+- name: Copy Server config
+  template:
+    src: "{{ playbook_dir }}/configs/server.properties"
+    dest: "{{ playbook_dir }}/cache/forge_server/server.properties"
+
+- name: Delete any existing world
+  file:
+    state: absent
+    path: "{{ playbook_dir }}/cache/forge_server/mods"
+
+- name: Copy any loaded Mods
+  copy:
+    src: "{{ playbook_dir }}/configs/mods/"
+    dest: "{{ playbook_dir }}/cache/forge_server/mods"
+
+- name: Delete any existing world
+  file:
+    state: absent
+    path: "{{ playbook_dir }}/cache/forge_server/world"
+
+- name: Copy any loaded World
+  copy:
+    src: "{{ playbook_dir }}/configs/world/"
+    dest: "{{ playbook_dir }}/cache/forge_server/world"
+
+- name: Copy Jolokia JVM Agent
+  copy:
+    src: "{{ playbook_dir }}/configs/jolokia-agent-jvm-2.0.3-javaagent.jar"
+    dest: "{{ playbook_dir }}/cache/forge_server/jolokia-agent-jvm-2.0.3-javaagent.jar"
+

@@ -1,0 +1,172 @@
+- hosts: localhost
+  tasks:
+    - import_tasks: "setup_nodes.yml"
+
+- hosts: server
+  tasks:
+    # - name: test if python works
+    #   shell: |
+    #     cd {{playbook_dir}}/cache/forge_server
+    #     python --help
+    #   register: output
+    # - set_fact:
+    #     output: "{{ output.stdout }}"
+    # - name: Print python works?
+    #   debug:
+    #     var: output
+      
+    - name: Run server
+      shell: |
+        cd {{playbook_dir}}/cache/forge_server
+        module load java
+        java -javaagent:jolokia-agent-jvm-2.0.3-javaagent.jar=port=8778 @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.19.2-43.4.0/unix_args.txt "$@"
+      async: "900"
+      poll: 0
+
+    - name: Sleep 30
+      pause: 
+        seconds: 30
+
+    - name: Get server PID
+      shell: |
+        pgrep -u "$(whoami)" -f "minecraftforge"
+      register: output
+    - set_fact:
+        server_pid: "{{ output.stdout }}"
+    - name: Print Server PID
+      debug:
+        var: server_pid
+        
+    - name: Start logging Jolokia ticks
+      shell: |
+        cd {{playbook_dir}}/cache/forge_server
+        source $(dirname $(dirname $(which conda)))/etc/profile.d/conda.sh
+        conda activate scratch
+        python jolokia_get_minecraft_tick.py > ../logs/jolokia_logs.csv
+      async: "900"
+      poll: 0
+
+    - name: Create temporary log file
+      tempfile:
+        path: /local
+      register: pecosa_log_file
+    - name: Get and run pecosa
+      shell: |
+        source $(dirname $(dirname $(which conda)))/etc/profile.d/conda.sh
+        conda activate scratch
+        python {{ playbook_dir }}/cache/pecosa/pecosa.py {{ pecosa_log_file.path }} {{ server_pid }}
+      async: "{{ experiment_duration_s }}"
+      poll: 0
+    - name: Sleep 1
+      pause:
+        seconds: 1
+    - name: Get pecosa PID
+      shell: |
+        pgrep -u "$(whoami)" -f "^python .*/pecosa.py"
+      register: output
+    - set_fact:
+        pecosa_pid: "{{ output.stdout }}"
+    - name: Print Pecosa PID
+      debug:
+        var: pecosa_pid
+
+
+
+- hosts: client
+  gather_facts: False
+  tasks:
+    # - name: Wait for server to be ready
+    #   pause:
+    #     seconds: 30
+
+    - set_fact:
+        server_ib_ip: "{{ '10.149.0.' ~ (groups['server'][0][-2:] | int) }}"
+    - name: Run Mineflayer
+      shell: |
+        module load java
+        node {{playbook_dir}}/cache/mineflayer/player_sim/run.js {{server_ib_ip}} 25565
+      register: mineflayer
+      async: "{{ experiment_duration_s }}"
+      poll: 0
+    - name: Sleep 1
+      pause:
+        seconds: 1
+    - name: Get Mineflayer PID
+      shell: |
+        pgrep -u "$(whoami)" -f "mineflayer"
+      register: output
+    - set_fact:
+        mineflayer_pid: "{{ output.stdout }}"
+    - name: Print Mineflayer PID
+      debug:
+        var: mineflayer_pid
+
+    - name: Create temporary log file
+      tempfile:
+        path: /local
+      register: pecosa_log_file
+    - name: Get and run pecosa
+      shell: |
+        source $(dirname $(dirname $(which conda)))/etc/profile.d/conda.sh
+        conda activate scratch
+        python {{ playbook_dir }}/cache/pecosa/pecosa.py {{ pecosa_log_file.path }} {{ mineflayer_pid }} </dev/null >/dev/null 2>&1
+      async: "{{ experiment_duration_s }}"
+      poll: 0
+      args:
+        executable: /bin/bash
+    - name: Sleep 1
+      pause:
+        seconds: 1
+    - name: Get pecosa PID
+      shell: |
+        pgrep -u `whoami` -f "^python {{ playbook_dir }}/cache/pecosa/pecosa.py"
+      register: output
+    - set_fact:
+        pecosa_pid: "{{ output.stdout }}"
+    - name: Print Pecosa PID
+      debug:
+        var: pecosa_pid
+
+    - name: Wait for Mineflayer to complete
+      async_status:
+        jid: "{{ mineflayer.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: "{{ (experiment_duration_s / 10) | int }}"
+      delay: 10
+
+    
+    
+
+- hosts: server
+  gather_facts: False
+  tasks:
+    - name: Check Jolokia logs
+      shell: |
+        cd {{playbook_dir}}/cache/logs
+        cat jolokia_logs.csv
+      register: jolokia_log
+    - name: setfact
+      set_fact: jolokia_log = {{jolokia_log}}
+    - name: see what is inside jolokia logs
+      debug: 
+        var: jolokia_log
+
+
+    - name: Copy jolokia log to output dir
+      copy:
+        src: "{{ playbook_dir }}/cache/logs/jolokia_logs.csv"
+        dest: "{{ hostvars['localhost']['playbook_dir'] }}/jolokia_logs.csv"
+        remote_src: True
+    - name: Kill server
+      shell: "kill {{ server_pid }}"
+    - name: Stop Pecosa
+      shell: "kill {{ pecosa_pid }}"
+    - name: Kill java
+      shell: "killall java"
+      ignore_errors: True
+
+- hosts: localhost
+  tasks:
+    - import_tasks: "cleanup_nodes.yml"
+
